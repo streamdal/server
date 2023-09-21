@@ -87,10 +87,14 @@ clean: description = Remove existing build artifacts
 clean:
 	$(RM) ./build/$(SERVICE)-*
 
-.PHONY: reset
-reset: description = Remove snitch-server docker images + clean redis
-reset:
+.PHONY: reset/redis
+reset/redis: description = Remove snitch-server docker images + clean redis
+reset/redis:
 	echo "flushall" | nc localhost 6379
+
+.PHONY: reset/docker
+reset/docker: description = Remove snitch-server docker images + clean redis
+reset/docker:
 	docker images | grep -i snitch | awk {'print $$3'} | xargs docker rmi -f
 	docker ps | grep -i snitch | awk {'print $$1'} | xargs docker rm -f
 
