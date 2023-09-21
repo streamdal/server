@@ -125,3 +125,8 @@ docker/push: description = Push local docker image
 docker/push:
 	docker push streamdal/$(SERVICE):$(VERSION) && \
 	docker push streamdal/$(SERVICE):latest
+
+.PHONY: local/logs
+local/logs: description = Push local docker image
+local/logs:
+	docker compose -f docker-compose.dev.yaml logs --tail=2 --follow
