@@ -42,7 +42,6 @@ services:
     build:
       context: ${PWD}/assets/envoy
       dockerfile: ${PWD}/assets/envoy/Dockerfile
-    image: grpcweb/envoy
     container_name: snitch-envoy
     ports:
       - "9091:9091"

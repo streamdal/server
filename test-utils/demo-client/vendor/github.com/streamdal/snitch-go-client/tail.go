@@ -2,6 +2,7 @@ package snitch
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -43,8 +44,10 @@ type Tail struct {
 }
 
 func (s *Snitch) sendTail(aud *protos.Audience, pipelineID string, originalData []byte, postPipelineData []byte) {
+	fmt.Println("sendTail function called")
 	tails := s.getTail(aud)
 	if len(tails) == 0 {
+		fmt.Println("0 tails")
 		return
 	}
 
@@ -83,6 +86,7 @@ func (t *Tail) ShipResponse(tr *protos.TailResponse) {
 func (t *Tail) startWorkers() error {
 	for i := 0; i < NumTailWorkers; i++ {
 		// Start SDK -> Server streaming gRPC connection
+		fmt.Printf("startWorkers: %d\n", i)
 		stream, err := t.snitchServer.GetTailStream(t.cancelCtx)
 		if err != nil {
 			return errors.Wrap(err, "error starting tail worker")
@@ -97,6 +101,7 @@ func (t *Tail) startWorkers() error {
 }
 
 func (t *Tail) startWorker(looper director.Looper, stream protos.Internal_SendTailClient) {
+	fmt.Printf("startWorker: %v\n", stream)
 	if stream == nil {
 		t.log.Error("stream is nil, unable to start tail worker")
 		return
@@ -145,6 +150,7 @@ func (t *Tail) startWorker(looper director.Looper, stream protos.Internal_SendTa
 }
 
 func (s *Snitch) startTailAudience(_ context.Context, cmd *protos.Command) error {
+	fmt.Printf("startTailAudience: %v\n", cmd)
 	if err := validate.TailRequestStartCommand(cmd); err != nil {
 		return errors.Wrap(err, "invalid tail command")
 	}
@@ -210,9 +216,11 @@ func (s *Snitch) stopTailAudience(_ context.Context, cmd *protos.Command) error 
 }
 
 func (s *Snitch) getTail(aud *protos.Audience) map[string]*Tail {
+	fmt.Printf("getTail: %v\n", aud)
 	s.tailsMtx.RLock()
+	fmt.Printf("getTail locked")
 	tails, ok := s.tails[audToStr(aud)]
-	s.tailsMtx.RUnlock()
+	defer s.tailsMtx.RUnlock()
 
 	if ok {
 		// We don't know when a tail is cancelled so we need to check the context
@@ -224,6 +232,7 @@ func (s *Snitch) getTail(aud *protos.Audience) map[string]*Tail {
 		return tails
 	}
 
+	fmt.Printf("getTail unlocked")
 	return nil
 }
 
@@ -245,8 +254,11 @@ func (s *Snitch) removeTail(aud *protos.Audience, tailID string) {
 }
 
 func (s *Snitch) setTailing(tail *Tail) {
+	fmt.Printf("setTailing: %v\n", tail)
 	s.tailsMtx.Lock()
+	fmt.Printf("Tail locked")
 	defer s.tailsMtx.Unlock()
+	fmt.Printf("Tail unlocked")
 
 	tr := tail.Request.GetTail().Request
 

@@ -380,30 +380,45 @@ func (s *InternalServer) GetAttachCommandsByService(
 }
 
 func (s *InternalServer) SendTail(srv protos.Internal_SendTailServer) error {
-	// This isn't necessary for go, but other langauge libraries, such as python
-	// require a response to eventually be sent and will throw an exception if
-	// one is not received
-	defer srv.SendAndClose(&protos.StandardResponse{
-		Id:   util.CtxRequestId(srv.Context()),
-		Code: protos.ResponseCode_RESPONSE_CODE_OK,
-	})
+	fmt.Printf("SendTail() called\n")
+	defer s.log.Debug("Exit SendTail function")
+
+	defer func() {
+		fmt.Printf("SendTail() defer called\n")
+		err := srv.SendAndClose(&protos.StandardResponse{
+			Id:   util.CtxRequestId(srv.Context()),
+			Code: protos.ResponseCode_RESPONSE_CODE_OK,
+		})
+		if err != nil {
+			fmt.Printf("SendTail() defer called, error in SendAndClose\n")
+			s.log.Error("Error in SendAndClose: ", err)
+		}
+	}()
 
 	for {
+		fmt.Printf("SendTail() for loop\n")
 		select {
 		case <-srv.Context().Done():
+			fmt.Printf("SendTail() context done\n")
 			s.log.Debug("send tail handler detected client disconnect")
 			return nil
 		case <-s.Options.ShutdownContext.Done():
+			fmt.Printf("SendTail() shutdown context done\n")
 			s.log.Debug("server shutting down, exiting SendTail() stream")
 			return nil
 		default:
+			fmt.Printf("SendTail() default\n")
+			s.log.Debug("Before srv.Recv()")
 			tailResp, err := srv.Recv()
+			fmt.Printf("SendTail() after srv.Recv()\n")
+			s.log.Debug("After srv.Recv()")
+
 			if err != nil {
+				s.log.Error("Error in srv.Recv(): ", err)
 				if strings.Contains(err.Error(), io.EOF.Error()) || strings.Contains(err.Error(), context.Canceled.Error()) {
 					s.log.Debug("client closed tail stream")
 					return nil
 				}
-
 				s.log.Error(errors.Wrap(err, "unable to receive tail response"))
 				continue
 			}
@@ -423,7 +438,6 @@ func (s *InternalServer) SendTail(srv protos.Internal_SendTailServer) error {
 			}
 
 			s.log.Debugf("Tail() after BroadcastTailResponse for session id '%s'", tailResp.SessionId)
-
 			s.log.Debugf("publishing tail response for session id '%s'", tailResp.SessionId)
 		}
 	}

@@ -2,6 +2,7 @@ package bus
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -511,19 +512,24 @@ func (b *Bus) sendTailCommand(_ context.Context, req *protos.TailRequest) error 
 	// the same pipeline ID and audience
 	// This needs to be it's own context since the parent context will be canceled on shutdown and
 	// thus we won't be able to read from redis in order to send out stop commands
+	fmt.Printf("bus.go: sendTailCommand: req: %v\n", req)
 	live, err := b.options.Store.GetLive(context.Background())
+	fmt.Printf("bus.go: sendTailCommand: live: %v\n", live)
 	if err != nil {
+		fmt.Printf("bus.go: sendTailCommand: err: %v\n", err)
 		return errors.Wrap(err, "unable to get live SDK connections")
 	}
-
 	for _, l := range live {
+		fmt.Printf("bus.go: sendTailCommand: l: %v\n", l)
 		// Check if the audience matches
 		if !util.AudienceEquals(l.Audience, req.Audience) {
+			fmt.Printf("bus.go: sendTailCommand: !util.AudienceEquals(l.Audience, req.Audience)\n")
 			continue
 		}
 
 		// Session isn't talking to this node
 		if l.NodeName != b.options.NodeName {
+			fmt.Printf("bus.go: sendTailCommand: l.NodeName: %v\n", l.NodeName)
 			continue
 		}
 
@@ -540,13 +546,20 @@ func (b *Bus) sendTailCommand(_ context.Context, req *protos.TailRequest) error 
 		// This causes the client to call SendTail() on it's end, which initiates a stream of TailResponse messages
 		// that will come in via internal gRPC API and then get shipped over RedisBackend for each snitch server instance
 		// to possibly receive and then further send to the front end
-		sdkCommandChan <- &protos.Command{
+		select {
+		case sdkCommandChan <- &protos.Command{
 			Audience: req.Audience,
 			Command: &protos.Command_Tail{
 				Tail: &protos.TailCommand{
 					Request: req,
 				},
 			},
+		}:
+			// The message was sent successfully.
+			fmt.Printf("Message sent successfully for session id '%s'", l.SessionID)
+		default:
+			// The channel is full or no receiver is ready.
+			fmt.Printf("channel is full or no receiver is ready for session id '%s'", l.SessionID)
 		}
 	}
 
@@ -554,6 +567,7 @@ func (b *Bus) sendTailCommand(_ context.Context, req *protos.TailRequest) error 
 }
 
 func (b *Bus) handleTailResponse(_ context.Context, req *protos.TailResponse) error {
+	fmt.Printf("bus.go: handleTailResponse: req: %v\n", req)
 	b.log.Debugf("handling tail response bus event: %v", req)
 
 	// Check if there is a pubsub topic.

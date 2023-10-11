@@ -343,7 +343,7 @@ func (b *Bus) handler(shutdownCtx context.Context, msg *redis.Message) error {
 		"source":   busEvent.Source,
 	})
 
-	//llog.Debug("received message successfully unmarshalled and validated; passing to handler")
+	llog.Debug("received message successfully unmarshalled and validated; passing to handler")
 
 	var err error
 

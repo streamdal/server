@@ -542,6 +542,8 @@ func (s *Snitch) Process(ctx context.Context, req *ProcessRequest) (*ProcessResp
 	pipelines := s.getPipelines(ctx, aud)
 	if len(pipelines) == 0 {
 		// Send tail if there is any. Tails do not require a pipeline to operate
+		fmt.Printf("Sending tail for audience ")
+
 		s.sendTail(aud, "", data, data)
 
 		// No pipelines for this mode, nothing to do

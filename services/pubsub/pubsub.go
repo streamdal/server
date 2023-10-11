@@ -40,17 +40,32 @@ type IPubSub interface {
 	Reset()
 }
 
+//	type PubSub struct {
+//		topics map[string]map[string]chan interface{} // k1: topic k2: subscriber id v: channel
+//		mtx    *sync.RWMutex
+//		log    *logrus.Entry
+//	}
 type PubSub struct {
-	topics map[string]map[string]chan interface{} // k1: topic k2: subscriber id v: channel
-	mtx    *sync.RWMutex
-	log    *logrus.Entry
+	topics  map[string]map[string]chan interface{} // k1: topic k2: subscriber id v: channel
+	closing map[string]bool                        // Track whether a topic is being closed
+	mtx     *sync.RWMutex
+	log     *logrus.Entry
 }
+
+//func New() *PubSub {
+//	return &PubSub{
+//		topics: make(map[string]map[string]chan interface{}),
+//		log:    logrus.WithField("pkg", "pubsub"),
+//		mtx:    &sync.RWMutex{},
+//	}
+//}
 
 func New() *PubSub {
 	return &PubSub{
-		topics: make(map[string]map[string]chan interface{}),
-		log:    logrus.WithField("pkg", "pubsub"),
-		mtx:    &sync.RWMutex{},
+		topics:  make(map[string]map[string]chan interface{}),
+		closing: make(map[string]bool),
+		log:     logrus.WithField("pkg", "pubsub"),
+		mtx:     &sync.RWMutex{},
 	}
 }
 
@@ -68,35 +83,30 @@ func (ps *PubSub) Listen(topic string, channelID ...string) chan interface{} {
 	fmt.Println("pubsub.Listen: before lock")
 
 	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	fmt.Println("pubsub.Listen: acquired lock")
+
 	if _, ok := ps.topics[topic]; !ok {
+		fmt.Printf("pubsub.Listen: topic '%s' not found, creating\n", topic)
 		ps.topics[topic] = make(map[string]chan interface{})
 	}
 
 	ps.topics[topic][id] = ch
-
-	ps.mtx.Unlock()
 
 	fmt.Println("pubsub.Listen: after unlock")
 
 	return ch
 }
 
-func (ps *PubSub) Reset() {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
-
-	for _, chs := range ps.topics {
-		for _, ch := range chs {
-			close(ch)
-		}
-	}
-
-	ps.topics = make(map[string]map[string]chan interface{})
-}
-
 func (ps *PubSub) Close(topic, channelID string) {
+	fmt.Println("pubsub.Close: before lock")
+
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
+	fmt.Println("pubsub.Close: acquired lock")
+
+	ps.closing[topic] = true
+	defer func() { ps.closing[topic] = false }()
 
 	ch, ok := ps.topics[topic][channelID]
 	if !ok {
@@ -109,11 +119,19 @@ func (ps *PubSub) Close(topic, channelID string) {
 	if ch != nil {
 		close(ch)
 	}
+
+	fmt.Println("pubsub.Close: after unlock")
 }
 
 func (ps *PubSub) CloseTopic(topic string) bool {
+	fmt.Println("pubsub.CloseTopic: before lock")
+
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
+	fmt.Println("pubsub.CloseTopic: acquired lock")
+
+	ps.closing[topic] = true
+	defer func() { ps.closing[topic] = false }()
 
 	channels, ok := ps.topics[topic]
 	if !ok {
@@ -126,14 +144,44 @@ func (ps *PubSub) CloseTopic(topic string) bool {
 
 	delete(ps.topics, topic)
 
+	fmt.Println("pubsub.CloseTopic: after unlock")
+
 	return true
 }
 
+func (ps *PubSub) Reset() {
+	fmt.Println("pubsub.Reset: before lock")
+
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	fmt.Println("pubsub.Reset: acquired lock")
+
+	for topic, chs := range ps.topics {
+		ps.closing[topic] = true
+		for _, ch := range chs {
+			close(ch)
+		}
+		ps.closing[topic] = false
+	}
+
+	ps.topics = make(map[string]map[string]chan interface{})
+	ps.closing = make(map[string]bool)
+
+	fmt.Println("pubsub.Reset: after unlock")
+}
+
 func (ps *PubSub) Publish(topic string, m interface{}) {
+	fmt.Println("pubsub.Publish: before lock")
+
 	ps.mtx.RLock()
 	defer ps.mtx.RUnlock()
+	fmt.Println("pubsub.Publish: acquired lock")
 
 	if _, ok := ps.topics[topic]; !ok {
+		return
+	}
+
+	if ps.closing[topic] {
 		return
 	}
 
@@ -144,12 +192,20 @@ func (ps *PubSub) Publish(topic string, m interface{}) {
 			ps.log.Debugf("pubsub.Publish: after topic '%s' write", topic)
 		}(tmpCh)
 	}
+
+	fmt.Println("pubsub.Publish: after unlock")
 }
 
 func (ps *PubSub) HaveTopic(topic string) bool {
+	fmt.Println("pubsub.HaveTopic: before lock")
+
 	ps.mtx.RLock()
 	defer ps.mtx.RUnlock()
+	fmt.Println("pubsub.HaveTopic: acquired lock")
 
 	_, ok := ps.topics[topic]
+
+	fmt.Println("pubsub.HaveTopic: after unlock")
+
 	return ok
 }
