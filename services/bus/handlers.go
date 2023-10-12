@@ -521,17 +521,21 @@ func (b *Bus) sendTailCommand(_ context.Context, req *protos.TailRequest) error 
 	}
 	for _, l := range live {
 		fmt.Printf("bus.go: sendTailCommand: l: %v\n", l)
-		// Check if the audience matches
-		if !util.AudienceEquals(l.Audience, req.Audience) {
-			fmt.Printf("bus.go: sendTailCommand: !util.AudienceEquals(l.Audience, req.Audience)\n")
+		if l.Register {
 			continue
 		}
 
-		// Session isn't talking to this node
-		if l.NodeName != b.options.NodeName {
-			fmt.Printf("bus.go: sendTailCommand: l.NodeName: %v\n", l.NodeName)
-			continue
-		}
+		// Check if the audience matches
+		//if !util.AudienceEquals(l.Audience, req.Audience) {
+		//	fmt.Printf("bus.go: sendTailCommand: !util.AudienceEquals(l.Audience, req.Audience)\n")
+		//	continue
+		//}
+		//
+		//// Session isn't talking to this node
+		//if l.NodeName != b.options.NodeName {
+		//	fmt.Printf("bus.go: sendTailCommand: l.NodeName: %v\n", l.NodeName)
+		//	continue
+		//}
 
 		// Get channel for the connected client. This allows us to send commands
 		// to a client that is connected via the Register() method
