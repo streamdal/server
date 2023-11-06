@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 )
 
 func main() {
@@ -24,6 +26,24 @@ func main() {
 	}
 
 	displayConfig(cfg)
+
+	// Start DataDog tracer
+	if os.Getenv("DD_ENV") != "" {
+		err := profiler.Start(
+			profiler.WithService("athena-writer"),
+			profiler.WithEnv(os.Getenv("DD_ENV")),
+			profiler.WithProfileTypes(
+				profiler.CPUProfile,
+				profiler.HeapProfile,
+			),
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		defer profiler.Stop()
+
+	}
 
 	if err := Run(cfg); err != nil {
 		fmt.Println("ERROR: ", err)
