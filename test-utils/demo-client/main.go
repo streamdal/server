@@ -30,7 +30,7 @@ func main() {
 	// Start DataDog tracer
 	if os.Getenv("DD_ENV") != "" {
 		err := profiler.Start(
-			profiler.WithService("athena-writer"),
+			profiler.WithService("demo-service"),
 			profiler.WithEnv(os.Getenv("DD_ENV")),
 			profiler.WithProfileTypes(
 				profiler.CPUProfile,
