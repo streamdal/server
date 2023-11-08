@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
-
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 )
 
@@ -49,6 +50,10 @@ func main() {
 		defer profiler.Stop()
 
 	}
+
+	go func() {
+		http.ListenAndServe("localhost:8888", nil)
+	}()
 
 	if err := Run(cfg); err != nil {
 		fmt.Println("ERROR: ", err)
