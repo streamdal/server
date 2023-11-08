@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
@@ -29,6 +31,9 @@ func main() {
 
 	// Start DataDog tracer
 	if os.Getenv("DD_ENV") != "" {
+		tracer.Start(tracer.WithAnalytics(true))
+		defer tracer.Stop()
+
 		err := profiler.Start(
 			profiler.WithService("demo-service"),
 			profiler.WithEnv(os.Getenv("DD_ENV")),
