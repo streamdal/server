@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/relistan/go-director"
 	"google.golang.org/protobuf/proto"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/streamdal/protos/build/go/protos"
 
@@ -387,6 +388,9 @@ func (s *Streamdal) watchForShutdown() {
 }
 
 func (s *Streamdal) pullInitialPipelines(ctx context.Context) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.pullInitialPipelines")
+	defer span.Finish()
+
 	cmds, err := s.serverClient.GetAttachCommandsByService(ctx, s.config.ServiceName)
 	if err != nil {
 		return errors.Wrap(err, "unable to pull initial pipelines")
@@ -425,6 +429,9 @@ func (s *Streamdal) pullInitialPipelines(ctx context.Context) error {
 func (s *Streamdal) heartbeat(loop *director.TimedLooper) {
 	var quit bool
 	loop.Loop(func() error {
+		span, ctx := tracer.StartSpanFromContext(context.Background(), "streamdal.heartbeat")
+		defer span.Finish()
+
 		if quit {
 			time.Sleep(time.Millisecond * 50)
 			return nil
@@ -446,7 +453,7 @@ func (s *Streamdal) heartbeat(loop *director.TimedLooper) {
 			ServiceName: s.config.ServiceName,
 		}
 
-		if err := s.serverClient.HeartBeat(s.config.ShutdownCtx, hb); err != nil {
+		if err := s.serverClient.HeartBeat(ctx, hb); err != nil {
 			if strings.Contains(err.Error(), "connection refused") {
 				// Streamdal server went away, log, sleep, and wait for reconnect
 				s.config.Logger.Warn("failed to send heartbeat, streamdal server© went away, waiting for reconnect")
@@ -461,6 +468,9 @@ func (s *Streamdal) heartbeat(loop *director.TimedLooper) {
 }
 
 func (s *Streamdal) runStep(ctx context.Context, aud *protos.Audience, step *protos.PipelineStep, data []byte) (*protos.WASMResponse, error) {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.runStep")
+	defer span.Finish()
+
 	s.config.Logger.Debugf("Running step '%s'", step.Name)
 
 	// Get WASM module
@@ -504,6 +514,9 @@ func (s *Streamdal) runStep(ctx context.Context, aud *protos.Audience, step *pro
 }
 
 func (s *Streamdal) getPipelines(ctx context.Context, aud *protos.Audience) map[string]*protos.Command {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.getPipelines")
+	defer span.Finish()
+
 	s.pipelinesMtx.RLock()
 	defer s.pipelinesMtx.RUnlock()
 
@@ -535,6 +548,9 @@ func (s *Streamdal) getCounterLabels(req *ProcessRequest, pipeline *protos.Pipel
 }
 
 func (s *Streamdal) Process(ctx context.Context, req *ProcessRequest) (*ProcessResponse, error) {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.Process")
+	defer span.Finish()
+
 	if err := validateProcessRequest(req); err != nil {
 		return nil, errors.Wrap(err, "invalid process request")
 	}
@@ -682,6 +698,9 @@ func (s *Streamdal) handleConditions(
 	aud *protos.Audience,
 	req *ProcessRequest,
 ) bool {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.handleConditions")
+	defer span.Finish()
+
 	shouldContinue := true
 	for _, condition := range conditions {
 		switch condition {

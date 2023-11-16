@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/relistan/go-director"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/streamdal/protos/build/go/protos"
 	"github.com/streamdal/protos/build/go/protos/shared"
@@ -67,6 +68,9 @@ func (s *Streamdal) register(looper director.Looper) error {
 	stream = srv
 
 	looper.Loop(func() error {
+		span, ctx := tracer.StartSpanFromContext(s.config.ShutdownCtx, "streamdal.register")
+		defer span.Finish()
+
 		if quit {
 			time.Sleep(time.Millisecond * 100)
 			return nil
@@ -85,7 +89,7 @@ func (s *Streamdal) register(looper director.Looper) error {
 
 			s.config.Logger.Debug("successfully reconnected to streamdal server")
 
-			newStream, err := s.serverClient.Register(s.config.ShutdownCtx, req)
+			newStream, err := s.serverClient.Register(ctx, req)
 			if err != nil {
 				if strings.Contains(err.Error(), context.Canceled.Error()) {
 					s.config.Logger.Debug("context cancelled during connect")
@@ -153,7 +157,7 @@ func (s *Streamdal) register(looper director.Looper) error {
 		// encounter any errors
 		initialRegister = false
 
-		if err := s.handleCommand(stream.Context(), cmd); err != nil {
+		if err := s.handleCommand(ctx, cmd); err != nil {
 			s.config.Logger.Errorf("Failed to handle command: %s", cmd.Command)
 			return nil
 		}
@@ -171,6 +175,9 @@ func (s *Streamdal) register(looper director.Looper) error {
 }
 
 func (s *Streamdal) handleCommand(ctx context.Context, cmd *protos.Command) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.handleCommand")
+	defer span.Finish()
+
 	if cmd == nil {
 		s.config.Logger.Debug("Received nil command, ignoring")
 		return nil
@@ -214,7 +221,10 @@ func (s *Streamdal) handleCommand(ctx context.Context, cmd *protos.Command) erro
 	return err
 }
 
-func (s *Streamdal) handleTailCommand(_ context.Context, cmd *protos.Command) error {
+func (s *Streamdal) handleTailCommand(ctx context.Context, cmd *protos.Command) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.handleTailCommand")
+	defer span.Finish()
+
 	tail := cmd.GetTail()
 
 	if tail == nil {
@@ -245,7 +255,10 @@ func (s *Streamdal) handleTailCommand(_ context.Context, cmd *protos.Command) er
 	return err
 }
 
-func (s *Streamdal) handleKVCommand(_ context.Context, kv *protos.KVCommand) error {
+func (s *Streamdal) handleKVCommand(ctx context.Context, kv *protos.KVCommand) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.handleKVCommand")
+	defer span.Finish()
+
 	if err := validate.KVCommand(kv); err != nil {
 		return errors.Wrap(err, "failed to validate kv command")
 	}
@@ -275,7 +288,10 @@ func (s *Streamdal) handleKVCommand(_ context.Context, kv *protos.KVCommand) err
 	return nil
 }
 
-func (s *Streamdal) attachPipeline(_ context.Context, cmd *protos.Command) error {
+func (s *Streamdal) attachPipeline(ctx context.Context, cmd *protos.Command) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.attachPipeline")
+	defer span.Finish()
+
 	if cmd == nil {
 		return ErrEmptyCommand
 	}
@@ -294,7 +310,10 @@ func (s *Streamdal) attachPipeline(_ context.Context, cmd *protos.Command) error
 	return nil
 }
 
-func (s *Streamdal) detachPipeline(_ context.Context, cmd *protos.Command) error {
+func (s *Streamdal) detachPipeline(ctx context.Context, cmd *protos.Command) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.detachPipeline")
+	defer span.Finish()
+
 	if cmd == nil {
 		return ErrEmptyCommand
 	}
@@ -319,7 +338,10 @@ func (s *Streamdal) detachPipeline(_ context.Context, cmd *protos.Command) error
 	return nil
 }
 
-func (s *Streamdal) pausePipeline(_ context.Context, cmd *protos.Command) error {
+func (s *Streamdal) pausePipeline(ctx context.Context, cmd *protos.Command) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.pausePipeline")
+	defer span.Finish()
+
 	if cmd == nil {
 		return ErrEmptyCommand
 	}
@@ -355,7 +377,10 @@ func (s *Streamdal) pausePipeline(_ context.Context, cmd *protos.Command) error 
 	return nil
 }
 
-func (s *Streamdal) resumePipeline(_ context.Context, cmd *protos.Command) error {
+func (s *Streamdal) resumePipeline(ctx context.Context, cmd *protos.Command) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.resumePipeline")
+	defer span.Finish()
+
 	if cmd == nil {
 		return ErrEmptyCommand
 	}

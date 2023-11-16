@@ -6,10 +6,15 @@ import (
 	"strconv"
 	"strings"
 
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+
 	"github.com/streamdal/protos/build/go/protos"
 )
 
 func (s *Streamdal) addAudience(ctx context.Context, aud *protos.Audience) {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.addAudience")
+	defer span.Finish()
+
 	// Don't need to add twice
 	if s.seenAudience(ctx, aud) {
 		return
@@ -36,6 +41,9 @@ func (s *Streamdal) addAudience(ctx context.Context, aud *protos.Audience) {
 // a server reconnect. The method will re-add all known audiences to the server
 // via internal gRPC NewAudience() endpoint. This is a non-blocking method.
 func (s *Streamdal) addAudiences(ctx context.Context) {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.addAudiences")
+	defer span.Finish()
+
 	s.audiencesMtx.RLock()
 	defer s.audiencesMtx.RUnlock()
 

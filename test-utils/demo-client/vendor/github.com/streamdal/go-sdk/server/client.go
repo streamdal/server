@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/streamdal/protos/build/go/protos"
 
@@ -80,7 +81,10 @@ func New(serverAddr, serverToken string) (*Client, error) {
 }
 
 func dialServer(serverAddr string) (*grpc.ClientConn, error) {
-	dialCtx, dialCancel := context.WithTimeout(context.Background(), dialTimeout)
+	span, ctx := tracer.StartSpanFromContext(context.Background(), "servdialServer")
+	defer span.Finish()
+
+	dialCtx, dialCancel := context.WithTimeout(ctx, dialTimeout)
 	defer dialCancel()
 
 	opts := make([]grpc.DialOption, 0)
@@ -142,6 +146,9 @@ func (c *Client) Notify(ctx context.Context, pipeline *protos.Pipeline, step *pr
 }
 
 func (c *Client) SendMetrics(ctx context.Context, counters []*types.CounterEntry) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "sendMetrics")
+	defer span.Finish()
+
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("auth-token", c.Token))
 
 	req := &protos.MetricsRequest{
@@ -176,6 +183,9 @@ func (c *Client) Register(ctx context.Context, req *protos.RegisterRequest) (pro
 }
 
 func (c *Client) NewAudience(ctx context.Context, aud *protos.Audience, sessionID string) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "newAudience")
+	defer span.Finish()
+
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("auth-token", c.Token))
 
 	aud.ServiceName = strings.ToLower(aud.ServiceName)
@@ -190,6 +200,9 @@ func (c *Client) NewAudience(ctx context.Context, aud *protos.Audience, sessionI
 }
 
 func (c *Client) HeartBeat(ctx context.Context, req *protos.HeartbeatRequest) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "server.heartbeat")
+	defer span.Finish()
+
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("auth-token", c.Token))
 
 	_, err := c.Server.Heartbeat(ctx, req)
@@ -197,6 +210,9 @@ func (c *Client) HeartBeat(ctx context.Context, req *protos.HeartbeatRequest) er
 }
 
 func (c *Client) GetAttachCommandsByService(ctx context.Context, service string) (*protos.GetAttachCommandsByServiceResponse, error) {
+	span, ctx := tracer.StartSpanFromContext(ctx, "server.GetAttachCommandsByService")
+	defer span.Finish()
+
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("auth-token", c.Token))
 
 	resp, err := c.Server.GetAttachCommandsByService(ctx, &protos.GetAttachCommandsByServiceRequest{ServiceName: service})
@@ -208,6 +224,9 @@ func (c *Client) GetAttachCommandsByService(ctx context.Context, service string)
 }
 
 func (c *Client) GetTailStream(ctx context.Context) (protos.Internal_SendTailClient, error) {
+	span, ctx := tracer.StartSpanFromContext(ctx, "server.GetTailStream")
+	defer span.Finish()
+
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("auth-token", c.Token))
 
 	srv, err := c.Server.SendTail(ctx)
@@ -219,6 +238,9 @@ func (c *Client) GetTailStream(ctx context.Context) (protos.Internal_SendTailCli
 }
 
 func (c *Client) SendSchema(ctx context.Context, aud *protos.Audience, jsonSchema []byte) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "server.SendSchema")
+	defer span.Finish()
+
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("auth-token", c.Token))
 
 	req := &protos.SendSchemaRequest{

@@ -10,6 +10,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/streamdal/protos/build/go/protos"
 )
@@ -24,6 +25,9 @@ type function struct {
 }
 
 func (f *function) Exec(ctx context.Context, req []byte) ([]byte, error) {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.Exec")
+	defer span.Finish()
+
 	f.mtx.Lock()
 	defer f.mtx.Unlock()
 
@@ -78,14 +82,17 @@ func (s *Streamdal) setFunctionCache(wasmID string, f *function) {
 	s.functions[wasmID] = f
 }
 
-func (s *Streamdal) getFunction(_ context.Context, step *protos.PipelineStep) (*function, error) {
+func (s *Streamdal) getFunction(ctx context.Context, step *protos.PipelineStep) (*function, error) {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.getFunction")
+	defer span.Finish()
+
 	// check cache
 	fc, ok := s.getFunctionFromCache(step.GetXWasmId())
 	if ok {
 		return fc, nil
 	}
 
-	fi, err := s.createFunction(step)
+	fi, err := s.createFunction(ctx, step)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create function")
 	}
@@ -104,7 +111,10 @@ func (s *Streamdal) getFunctionFromCache(wasmID string) (*function, bool) {
 	return f, ok
 }
 
-func (s *Streamdal) createFunction(step *protos.PipelineStep) (*function, error) {
+func (s *Streamdal) createFunction(ctx context.Context, step *protos.PipelineStep) (*function, error) {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.createFunction")
+	defer span.Finish()
+
 	inst, err := s.createWASMInstance(step.GetXWasmBytes())
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create WASM instance")

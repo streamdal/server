@@ -3,6 +3,8 @@ package streamdal
 import (
 	"context"
 
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+
 	"github.com/streamdal/protos/build/go/protos"
 )
 
@@ -29,6 +31,9 @@ func (s *Streamdal) setSchema(_ context.Context, aud *protos.Audience, schema []
 
 // handleSchema will handle the schema step in the pipeline, if necessary
 func (s *Streamdal) handleSchema(ctx context.Context, aud *protos.Audience, step *protos.PipelineStep, resp *protos.WASMResponse) bool {
+	span, ctx := tracer.StartSpanFromContext(ctx, "streamdal.handleSchema")
+	defer span.Finish()
+
 	inferSchema := step.GetInferSchema()
 
 	if inferSchema == nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/relistan/go-director"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/streamdal/go-sdk/logger"
 	"github.com/streamdal/go-sdk/server"
@@ -152,7 +153,10 @@ func applyDefaults(cfg *Config) {
 	}
 }
 
-func (m *Metrics) Incr(_ context.Context, entry *types.CounterEntry) error {
+func (m *Metrics) Incr(ctx context.Context, entry *types.CounterEntry) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "metrics.Incr")
+	defer span.Finish()
+
 	if err := validateCounterEntry(entry); err != nil {
 		return errors.Wrap(err, "unable to validate counter entry")
 	}
