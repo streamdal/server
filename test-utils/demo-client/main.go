@@ -36,7 +36,7 @@ func main() {
 		defer tracer.Stop()
 
 		err := profiler.Start(
-			profiler.WithService("demo-service"),
+			profiler.WithService("demo-client"),
 			profiler.WithEnv(os.Getenv("DD_ENV")),
 			profiler.WithProfileTypes(
 				profiler.CPUProfile,
