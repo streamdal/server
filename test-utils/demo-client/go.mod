@@ -10,7 +10,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/streamdal/go-sdk v0.0.76-0.20231116193623-39ade4926e54
+	github.com/streamdal/go-sdk v0.0.76-0.20231116222121-87cef150dce3
 	gopkg.in/DataDog/dd-trace-go.v1 v1.57.0
 )
 
