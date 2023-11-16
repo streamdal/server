@@ -10,7 +10,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/streamdal/go-sdk v0.0.71
+	github.com/streamdal/go-sdk v0.0.76-0.20231116193623-39ade4926e54
 	gopkg.in/DataDog/dd-trace-go.v1 v1.57.0
 )
 
@@ -40,7 +40,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.7.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/streamdal/protos v0.0.115 // indirect
+	github.com/streamdal/protos v0.0.120 // indirect
 	github.com/tetratelabs/wazero v1.5.0 // indirect
 	github.com/tinylib/msgp v1.1.8 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
