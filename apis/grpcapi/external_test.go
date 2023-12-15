@@ -870,7 +870,7 @@ func newPipeline() *protos.Pipeline {
 					protos.PipelineStepCondition_PIPELINE_STEP_CONDITION_NOTIFY,
 				},
 				OnFailure: []protos.PipelineStepCondition{
-					protos.PipelineStepCondition_PIPELINE_STEP_CONDITION_ABORT,
+					protos.PipelineStepCondition_PIPELINE_STEP_CONDITION_ABORT_CURRENT,
 				},
 				Step: &protos.PipelineStep_Detective{
 					Detective: &steps.DetectiveStep{
