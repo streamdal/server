@@ -100,6 +100,15 @@ type IStore interface {
 	GetActiveTailCommandsByService(ctx context.Context, serviceName string) ([]*protos.Command, error)
 	AddActiveTailRequest(ctx context.Context, req *protos.TailRequest) (string, error) // Returns key that tail req is stored under
 
+	// GetPipelineHistory returns the history of a pipeline as a map. The key is the version, the value is a protos.Pipeline
+	GetPipelineHistory(ctx context.Context, pipelineID string) (map[int32]*protos.Pipeline, error)
+
+	// DeletePipelineHistory deletes any history entries for the given pipeline ID
+	DeletePipelineHistory(ctx context.Context, pipelineId string) error
+
+	// StorePipelineHistory stores a pipeline history entry in redis
+	StorePipelineHistory(ctx context.Context, pipeline *protos.Pipeline) error
+
 	// GetAudiencesBySessionID returns all audiences for a given session id
 	// This is needed to inject an inferschema pipeline for each announced audience
 	// to the session via a goroutine in internal.Register()
@@ -349,6 +358,14 @@ func (s *Store) DeletePipeline(ctx context.Context, pipelineId string) error {
 
 	if err := s.options.RedisBackend.Del(ctx, RedisPipelineKey(pipelineId)).Err(); err != nil {
 		return errors.Wrap(err, "error deleting pipeline from store")
+	}
+
+	return nil
+}
+
+func (s *Store) DeletePipelineHistory(ctx context.Context, pipelineId string) error {
+	if err := s.options.RedisBackend.Del(ctx, RedisPipelineHistoryKey(pipelineId)).Err(); err != nil {
+		return errors.Wrap(err, "error deleting pipeline history from store")
 	}
 
 	return nil
@@ -1116,6 +1133,51 @@ func (s *Store) GetPipelineUsage(ctx context.Context) ([]*PipelineUsage, error) 
 	}
 
 	return pipelines, nil
+}
+
+func (s *Store) GetPipelineHistory(ctx context.Context, pipelineID string) (map[int32]*protos.Pipeline, error) {
+	history, err := s.options.RedisBackend.HGetAll(ctx, RedisPipelineHistoryKey(pipelineID)).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, ErrPipelineNotFound
+		}
+
+		return nil, errors.Wrap(err, "error fetching pipeline history from store")
+	}
+
+	pipelines := map[int32]*protos.Pipeline{}
+
+	for _, data := range history {
+		pipeline := &protos.Pipeline{}
+
+		if err := proto.Unmarshal([]byte(data), pipeline); err != nil {
+			return nil, errors.Wrap(err, "error deserializing pipeline")
+		}
+
+		pipelines[pipeline.Version] = pipeline
+	}
+
+	return pipelines, nil
+}
+
+func (s *Store) StorePipelineHistory(ctx context.Context, pipeline *protos.Pipeline) error {
+	for _, step := range pipeline.Steps {
+		step.XWasmBytes = nil
+	}
+
+	data, err := proto.Marshal(pipeline)
+	if err != nil {
+		return errors.Wrap(err, "error serializing pipeline to protobuf")
+	}
+
+	key := RedisPipelineHistoryKey(pipeline.Id)
+	if err := s.options.RedisBackend.HSet(ctx, key, pipeline.Version, data).Err(); err != nil {
+		return errors.Wrap(err, "error saving pipeline to store")
+	}
+
+	s.log.Debugf("stored pipeline history for pipeline '%s' version '%d'", pipeline.Id, pipeline.Version)
+
+	return nil
 }
 
 // GetActivePipelineUsage gets *ACTIVE* pipeline usage on the CURRENT node

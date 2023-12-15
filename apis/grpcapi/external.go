@@ -322,8 +322,11 @@ func (s *ExternalServer) CreatePipeline(ctx context.Context, req *protos.CreateP
 		}, nil
 	}
 
-	// Create ID for pipeline
+	// Populate Defaults
 	req.Pipeline.Id = util.GenerateUUID()
+	req.Pipeline.Version = 1
+	req.Pipeline.CreatedAt = time.Now().UTC().UnixNano()
+	req.Pipeline.UpdatedAt = time.Now().UTC().UnixNano()
 
 	// Populate WASM fields
 	if err := util.PopulateWASMFields(req.Pipeline, s.Options.Config.WASMDir); err != nil {
@@ -376,13 +379,28 @@ func (s *ExternalServer) UpdatePipeline(ctx context.Context, req *protos.UpdateP
 		return util.StandardResponse(ctx, protos.ResponseCode_RESPONSE_CODE_INTERNAL_SERVER_ERROR, err.Error()), nil
 	}
 
+	// Backwards compat for pipelines that existed pre-history
+	if originalPipeline.Version == 0 {
+		originalPipeline.Version = 1
+	}
+
 	// Re-populate WASM bytes (since they are stripped for UI)
 	if err := util.PopulateWASMFields(req.Pipeline, s.Options.Config.WASMDir); err != nil {
 		return util.StandardResponse(ctx, protos.ResponseCode_RESPONSE_CODE_INTERNAL_SERVER_ERROR, errors.Wrap(err, "unable to repopulate WASM data").Error()), nil
 	}
 
+	// Increment version of new pipeline
+	req.Pipeline.Version = originalPipeline.Version + 1
+	req.Pipeline.CreatedAt = originalPipeline.CreatedAt
+	req.Pipeline.UpdatedAt = time.Now().UTC().UnixNano()
+
 	// Update pipeline in storage
 	if err := s.Options.StoreService.UpdatePipeline(ctx, req.Pipeline); err != nil {
+		return util.StandardResponse(ctx, protos.ResponseCode_RESPONSE_CODE_INTERNAL_SERVER_ERROR, err.Error()), nil
+	}
+
+	// Save old pipeline to history
+	if err := s.Options.StoreService.StorePipelineHistory(ctx, originalPipeline); err != nil {
 		return util.StandardResponse(ctx, protos.ResponseCode_RESPONSE_CODE_INTERNAL_SERVER_ERROR, err.Error()), nil
 	}
 
@@ -476,6 +494,11 @@ func (s *ExternalServer) DeletePipeline(ctx context.Context, req *protos.DeleteP
 		return util.StandardResponse(ctx, protos.ResponseCode_RESPONSE_CODE_INTERNAL_SERVER_ERROR, err.Error()), nil
 	}
 
+	if err := s.Options.StoreService.DeletePipelineHistory(ctx, req.PipelineId); err != nil {
+		// Log error but don't return it, don't need to fail the request
+		s.log.Errorf("unable to delete pipeline history: %v", err)
+	}
+
 	// Send telemetry
 	status := "detached"
 	if s.Options.StoreService.IsPipelineAttachedAny(ctx, req.PipelineId) {
@@ -488,7 +511,7 @@ func (s *ExternalServer) DeletePipeline(ctx context.Context, req *protos.DeleteP
 	}...)
 
 	// Zero out step gauge for this pipeline
-	s.Options.Telemetry.Gauge(types.GaugeUsageNumSteps, 0, 1.0, []statsd.Tag{
+	_ = s.Options.Telemetry.Gauge(types.GaugeUsageNumSteps, 0, 1.0, []statsd.Tag{
 		{"install_id", s.Options.InstallID},
 		{"pipeline_id", req.PipelineId},
 	}...)
@@ -1298,6 +1321,21 @@ func (s *ExternalServer) uibffPostRequest(endpoint string, m proto.Message) (*pr
 	}
 
 	return resp, nil
+}
+
+func (s *ExternalServer) GetPipelineHistory(ctx context.Context, req *protos.GetPipelineHistoryRequest) (*protos.GetPipelineHistoryResponse, error) {
+	if err := validate.GetPipelineHistoryRequest(req); err != nil {
+		return nil, errors.Wrap(err, "invalid get pipeline history request")
+	}
+
+	history, err := s.Options.StoreService.GetPipelineHistory(ctx, req.PipelineId)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get pipeline history")
+	}
+
+	return &protos.GetPipelineHistoryResponse{
+		Entries: history,
+	}, nil
 }
 
 func (s *ExternalServer) Test(_ context.Context, req *protos.TestRequest) (*protos.TestResponse, error) {

@@ -53,6 +53,9 @@ const (
 
 	RedisTelemetryAudiencePrefix = "streamdal_telemetry:audience"
 	RedisTelemetryAudienceFormat = "streamdal_telemetry:audience:%x"
+
+	RedisPipelineHistoryPrefix = "streamdal_pipeline_history"
+	RedisPipelineHistoryFormat = "streamdal_pipeline_history:%s" // K: $pipeline_id V: map[version]protos.Pipeline
 )
 
 func RedisRegisterKey(session, node string) string {
@@ -107,4 +110,8 @@ func RedisActiveTailKey(tailID string) string {
 
 func RedisPausedTailKey(tailID string) string {
 	return strings.ToLower(fmt.Sprintf(RedisPausedTailKeyFormat, tailID))
+}
+
+func RedisPipelineHistoryKey(pipelineID string) string {
+	return strings.ToLower(fmt.Sprintf(RedisPipelineHistoryFormat, pipelineID))
 }

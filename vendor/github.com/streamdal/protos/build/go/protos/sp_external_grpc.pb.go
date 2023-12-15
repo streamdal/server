@@ -49,6 +49,7 @@ const (
 	External_AppRegister_FullMethodName           = "/protos.External/AppRegister"
 	External_AppVerifyRegistration_FullMethodName = "/protos.External/AppVerifyRegistration"
 	External_AppRegisterReject_FullMethodName     = "/protos.External/AppRegisterReject"
+	External_GetPipelineHistory_FullMethodName    = "/protos.External/GetPipelineHistory"
 	External_Test_FullMethodName                  = "/protos.External/Test"
 )
 
@@ -107,6 +108,7 @@ type ExternalClient interface {
 	AppRegister(ctx context.Context, in *AppRegistrationRequest, opts ...grpc.CallOption) (*StandardResponse, error)
 	AppVerifyRegistration(ctx context.Context, in *AppVerifyRegistrationRequest, opts ...grpc.CallOption) (*StandardResponse, error)
 	AppRegisterReject(ctx context.Context, in *AppRegisterRejectRequest, opts ...grpc.CallOption) (*StandardResponse, error)
+	GetPipelineHistory(ctx context.Context, in *GetPipelineHistoryRequest, opts ...grpc.CallOption) (*GetPipelineHistoryResponse, error)
 	// Test method
 	Test(ctx context.Context, in *TestRequest, opts ...grpc.CallOption) (*TestResponse, error)
 }
@@ -481,6 +483,15 @@ func (c *externalClient) AppRegisterReject(ctx context.Context, in *AppRegisterR
 	return out, nil
 }
 
+func (c *externalClient) GetPipelineHistory(ctx context.Context, in *GetPipelineHistoryRequest, opts ...grpc.CallOption) (*GetPipelineHistoryResponse, error) {
+	out := new(GetPipelineHistoryResponse)
+	err := c.cc.Invoke(ctx, External_GetPipelineHistory_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *externalClient) Test(ctx context.Context, in *TestRequest, opts ...grpc.CallOption) (*TestResponse, error) {
 	out := new(TestResponse)
 	err := c.cc.Invoke(ctx, External_Test_FullMethodName, in, out, opts...)
@@ -545,6 +556,7 @@ type ExternalServer interface {
 	AppRegister(context.Context, *AppRegistrationRequest) (*StandardResponse, error)
 	AppVerifyRegistration(context.Context, *AppVerifyRegistrationRequest) (*StandardResponse, error)
 	AppRegisterReject(context.Context, *AppRegisterRejectRequest) (*StandardResponse, error)
+	GetPipelineHistory(context.Context, *GetPipelineHistoryRequest) (*GetPipelineHistoryResponse, error)
 	// Test method
 	Test(context.Context, *TestRequest) (*TestResponse, error)
 	mustEmbedUnimplementedExternalServer()
@@ -643,6 +655,9 @@ func (UnimplementedExternalServer) AppVerifyRegistration(context.Context, *AppVe
 }
 func (UnimplementedExternalServer) AppRegisterReject(context.Context, *AppRegisterRejectRequest) (*StandardResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppRegisterReject not implemented")
+}
+func (UnimplementedExternalServer) GetPipelineHistory(context.Context, *GetPipelineHistoryRequest) (*GetPipelineHistoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPipelineHistory not implemented")
 }
 func (UnimplementedExternalServer) Test(context.Context, *TestRequest) (*TestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Test not implemented")
@@ -1212,6 +1227,24 @@ func _External_AppRegisterReject_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _External_GetPipelineHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPipelineHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExternalServer).GetPipelineHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: External_GetPipelineHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExternalServer).GetPipelineHistory(ctx, req.(*GetPipelineHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _External_Test_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TestRequest)
 	if err := dec(in); err != nil {
@@ -1340,6 +1373,10 @@ var External_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AppRegisterReject",
 			Handler:    _External_AppRegisterReject_Handler,
+		},
+		{
+			MethodName: "GetPipelineHistory",
+			Handler:    _External_GetPipelineHistory_Handler,
 		},
 		{
 			MethodName: "Test",

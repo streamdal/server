@@ -840,3 +840,15 @@ func GetSchemaRequest(r *protos.GetSchemaRequest) error {
 
 	return nil
 }
+
+func GetPipelineHistoryRequest(r *protos.GetPipelineHistoryRequest) error {
+	if r == nil {
+		return ErrNilInput
+	}
+
+	if r.PipelineId == "" {
+		return ErrEmptyField("PipelineId")
+	}
+
+	return nil
+}
