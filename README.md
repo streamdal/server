@@ -5,6 +5,8 @@ streamdal-server
 [![Pull Request](https://github.com/streamdal/server/actions/workflows/pr-test.yml/badge.svg)](https://github.com/streamdal/server/actions/workflows/pr-test.yml)
 [![Discord](https://img.shields.io/badge/Community-Discord-4c57e8.svg)](https://discord.gg/streamdal)
 
+# [THIS REPO HAS MOVED!](https://github.com/streamdal/streamdal)
+
 The server component in the Streamdal ecosystem.
 
 The server exposes 3 APIs:
